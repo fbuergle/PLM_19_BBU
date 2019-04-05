@@ -33,6 +33,22 @@
   #include <SoftwareSerial.h>
 #endif
 
+//Servo stuff -- 05.04.19
+#include <Servo.h>
+Servo myservo;  // create servo object to control a servo
+// twelve servo objects can be created on most boards
+
+//The position which can be driven at
+enum myPositions{
+  POSITION_LEFT = -90,
+  POSITION_RIGHT = 90,
+  POSITION_IDLE = 0
+};
+
+int pos = POSITION_IDLE;    // variable to store the servo position
+// -- End of Servo stuff
+
+
 /*=========================================================================
     APPLICATION SETTINGS
 
@@ -158,6 +174,7 @@ void setup(void)
 }
 
 /*SECOND TRY*/
+//Statemachine which stores the different possible states
 enum myStateMachine{
   IDLESTATE = 0,
   PICKUP_RIGHT,
@@ -167,6 +184,7 @@ enum myStateMachine{
 };
 int currentState = IDLESTATE;
 
+//Change state according to the input (from bluetooth)
 void checkforInput(String input){
   if (input == "pickup(0)"){
       currentState = PICKUP_LEFT;
@@ -184,17 +202,21 @@ void checkforInput(String input){
 }
 
 // do the working stuff
-
+// what to do at which state
 void work(void){
   switch(currentState){
     case IDLESTATE:
-    
+      // do nothing
     break;
     case PICKUP_LEFT:
-    
+      //go to position left
+      myservo.write(POSITION_LEFT);              // tell servo to go to position in variable 'POSITION_LEFT'
+      delay(15); 
     break;
     case PICKUP_RIGHT:
-    
+      //go to position right
+      myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
+      delay(15); 
     break;
     case DROP_LEFT:
     
@@ -243,6 +265,7 @@ void loop(void)
   Serial.println("currentState");
   Serial.println(currentState);
 
+  //do what has to be done in the current state
   work();
   
   // Some data was found, its in the buffer
