@@ -37,12 +37,13 @@
 #include <Servo.h>
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
+const int SERVOPIN = 10;
 
 //The position which can be driven at
 enum myPositions{
-  POSITION_LEFT = -90,
-  POSITION_RIGHT = 90,
-  POSITION_IDLE = 0
+  POSITION_LEFT = 0, //-90
+  POSITION_RIGHT = 270,
+  POSITION_IDLE = 90
 };
 
 int pos = POSITION_IDLE;    // variable to store the servo position
@@ -171,6 +172,14 @@ void setup(void)
     ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
     Serial.println(F("******************************"));
   }
+
+
+  /*---------------- Setup Servo ----------------- */
+  // initialize digital pin 13 as an output.
+  pinMode(SERVOPIN, OUTPUT);
+  
+
+  myservo.attach(SERVOPIN);//Servo mit Pin verbinden
 }
 
 /*SECOND TRY*/
@@ -198,7 +207,8 @@ void checkforInput(String input){
   if(input == "drop(1)"){
       currentState = DROP_RIGHT;
   }
-  
+  Serial.println("CheckforInput was called");
+  Serial.print(currentState);
 }
 
 // do the working stuff
@@ -211,15 +221,20 @@ void work(void){
     case PICKUP_LEFT:
       //go to position left
       myservo.write(POSITION_LEFT);              // tell servo to go to position in variable 'POSITION_LEFT'
-      delay(15); 
+      Serial.println("going to Position left");
+      delay(50); 
     break;
     case PICKUP_RIGHT:
       //go to position right
       myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
-      delay(15); 
+      Serial.println("going to Position right");
+      delay(50); 
     break;
     case DROP_LEFT:
-    
+      //go to position right
+      myservo.write(POSITION_IDLE);              // tell servo to go to position in variable 'POSITION_RIGHT'
+      Serial.println("going to Position IDLE");
+      delay(50);  
     break;
     case DROP_RIGHT:
     
