@@ -41,14 +41,23 @@ const int SERVOPIN = 10;
 
 //The position which can be driven at
 enum myPositions{
-  POSITION_LEFT = 90, //-90
-  POSITION_RIGHT = 0,
-  POSITION_IDLE = 180
+  POSITION_LEFT = 0, 
+  POSITION_RIGHT = 180,
+  POSITION_IDLE = 90
 };
 
-int pos = POSITION_IDLE;    // variable to store the servo position
+//The speed at which the servo can be driven at
+int speedOfDrive = 1; //how many degrees per step will be driven
+int waittimePerDegree = 16; //in milliseconds
+
+int currentPosition = POSITION_IDLE;    // variable to store the servo position
 // -- End of Servo stuff
 
+//Sensor stuff
+
+const int SENSORPIN = 12;
+
+//End of sensor stuff
 
 /*=========================================================================
     APPLICATION SETTINGS
@@ -180,6 +189,9 @@ void setup(void)
   
 
   myservo.attach(SERVOPIN);//Servo mit Pin verbinden
+
+  /* --------------- Setup Sensor ---------------*/
+  pinMode(SENSORPIN, INPUT);
 }
 
 /*SECOND TRY*/
@@ -211,38 +223,66 @@ void checkforInput(String input){
   Serial.print(currentState);
 }
 
+//driving
+void drive(int positionToDriveAt){
+  //Decide if we have to turn right or left
+  if(currentPosition>positionToDriveAt){
+    for(currentPosition; currentPosition > positionToDriveAt; currentPosition-=speedOfDrive){
+        myservo.write(currentPosition);
+        //Serial.print("going to Position left, currently at:");
+        //Serial.println(currentPosition);
+        delay(waittimePerDegree); 
+      }
+  }
+  else{
+    for(currentPosition; currentPosition < positionToDriveAt; currentPosition+=speedOfDrive){
+        myservo.write(currentPosition);
+        //Serial.print("going to Position , currently at:");
+        //Serial.println(currentPosition);
+        delay(waittimePerDegree); 
+      }
+    }
+}
+
 // do the working stuff
 // what to do at which state
 void work(void){
   switch(currentState){
     case IDLESTATE:
-      // do nothing
+      // do nothing, wait for input
     break;
     case PICKUP_LEFT:
-      //go to position left
-      myservo.write(POSITION_LEFT);              // tell servo to go to position in variable 'POSITION_LEFT'
-      Serial.print("going to Position left");
-      Serial.println(POSITION_LEFT);
-      delay(50); 
+       
+       Serial.print("going to Position left, currentPosition");
+      Serial.println(currentPosition);
+      drive(POSITION_LEFT);
+      Serial.print("Position left reached, currentPosition");
+      Serial.println(currentPosition);
     break;
     case PICKUP_RIGHT:
       //go to position right
-      myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
+      //myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
       Serial.print("going to Position right");
+      drive(POSITION_RIGHT);
       Serial.println(POSITION_RIGHT);
       delay(50); 
     break;
     case DROP_LEFT:
       //go to position right
-      myservo.write(POSITION_IDLE);              // tell servo to go to position in variable 'POSITION_RIGHT'
+      //myservo.write(POSITION_IDLE);              // tell servo to go to position in variable 'POSITION_RIGHT'
       Serial.print("going to Position IDLE");
+      drive(POSITION_IDLE);
       Serial.println(POSITION_IDLE);
       delay(50);  
     break;
     case DROP_RIGHT:
     
     break;
-}  
+  }
+  Serial.print(" 0000000000000000000000000 sensor is");
+    short sensorInput = 0;
+    sensorInput = digitalRead(SENSORPIN);
+    Serial.println((int)sensorInput);  
 }
 
 /**************************************************************************/
