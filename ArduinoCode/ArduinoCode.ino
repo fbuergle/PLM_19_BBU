@@ -14,7 +14,7 @@
 *********************************************************************/
 
 /*
- Erweiterungen des Besipiels durch:
+ Code from:
  Remo Büchi
  Franziska Bürgler
  Luca Urban
@@ -33,7 +33,7 @@
   #include <SoftwareSerial.h>
 #endif
 
-//Servo stuff -- 05.04.19
+//-- Servo stuff -- 05.04.19
 #include <Servo.h>
 Servo myservo;  // create servo object to control a servo
 // twelve servo objects can be created on most boards
@@ -48,9 +48,9 @@ enum myPositions{
 
 //The speed at which the servo can be driven at
 int speedOfDrive = 1; //how many degrees per step will be driven
-int waittimePerDegree = 16; //in milliseconds
+int waittimePerDegree = 16; //how long will be waited till the next step is done - in milliseconds
 
-int currentPosition = POSITION_IDLE;    // variable to store the servo position
+int currentPosition = POSITION_IDLE;    // variable to store the current servo position
 // -- End of Servo stuff
 
 //Sensor stuff
@@ -188,13 +188,67 @@ void setup(void)
   pinMode(SERVOPIN, OUTPUT);
   
 
-  myservo.attach(SERVOPIN);//Servo mit Pin verbinden
+  myservo.attach(SERVOPIN);//Connect servo at Pin
+  myservo.write(currentPosition); //go to currentPosition (should be IDLE Position at this point
+  
 
   /* --------------- Setup Sensor ---------------*/
   pinMode(SENSORPIN, INPUT);
 }
 
 /*SECOND TRY*/
+//Communicate via bluetooth
+void sendAnswer(char text[]){
+// Send characters to Bluefruit
+    Serial.print("[Send] ");
+    Serial.println(text);
+
+    ble.print("AT+BLEUARTTX=");
+    ble.println(text);
+    // check response stastus
+    if (! ble.waitForOK() ) {
+      Serial.println(F("Failed to send?"));
+    }
+}
+
+//check sensor, returns true if package detected
+bool packageDetected(){
+  Serial.print(" checksensor -- sensor is");
+  int sensorInput = 0;
+  sensorInput = digitalRead(SENSORPIN);
+  Serial.println(sensorInput);
+  
+  bool returnvalue = false;
+  
+  //If sensor returns 0 = LOW --> Something detected
+  //Source http://wiki.seeedstudio.com/Grove-Digital_Distance_Interrupter_0.5_to_5cm-GP2Y0D805Z0F_P/#resources
+  if(sensorInput == LOW){
+    returnvalue = true;
+  }
+      Serial.print(" pacakgeDetected is ");
+      Serial.println(returnvalue);
+  return returnvalue;
+}
+
+void sendAnswerPickup(){
+  if(packageDetected()){
+    sendAnswer("pickupSuccess(1)"); //pickup successfull
+  }
+  else{
+    sendAnswer("pickupSuccess(0)"); //-- error on pickup
+  } 
+}
+
+//same as sendAnswerPickup but reversed (drop is successfull, if there is no package in anymore)
+void sendAnswerDrop(){
+  if(!packageDetected()){
+    sendAnswer("dropSuccess(1)"); //drop successfull
+  }
+  else{
+    sendAnswer("dropSuccess(0)"); //-- error on drop
+  } 
+}
+
 //Statemachine which stores the different possible states
 enum myStateMachine{
   IDLESTATE = 0,
@@ -202,6 +256,10 @@ enum myStateMachine{
   PICKUP_LEFT,
   DROP_LEFT,
   DROP_RIGHT
+  //testing positions
+  , CHECK_POSITION_LEFT,
+  CHECK_POSITION_RIGHT,
+  CHECK_POSITION_IDLE
 };
 int currentState = IDLESTATE;
 
@@ -219,6 +277,18 @@ void checkforInput(String input){
   if(input == "drop(1)"){
       currentState = DROP_RIGHT;
   }
+
+  //For Testing purpuoses - comment out, once all positions are clear
+  if(input == "testleft"){
+      currentState = CHECK_POSITION_LEFT;
+  }
+  if(input == "testright"){
+      currentState = CHECK_POSITION_RIGHT;
+  }
+  if(input == "testidle"){
+      currentState = CHECK_POSITION_IDLE;
+  }
+  // --End of Testing
   Serial.println("CheckforInput was called");
   Serial.print(currentState);
 }
@@ -258,31 +328,62 @@ void work(void){
       drive(POSITION_LEFT);
       Serial.print("Position left reached, currentPosition");
       Serial.println(currentPosition);
+      delay(50); // wait a moment
+      drive(POSITION_IDLE);
+      delay(50); // wait a moment
+      //packageDetected(); //check sensor (returns true, if package was in
+      sendAnswerPickup();
+      
     break;
     case PICKUP_RIGHT:
       //go to position right
       //myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
       Serial.print("going to Position right");
-      drive(POSITION_RIGHT);
       Serial.println(POSITION_RIGHT);
-      delay(50); 
+      drive(POSITION_RIGHT);
+      delay(50); // wait a moment
+      drive(POSITION_IDLE);
+      delay(50); // wait a moment
+      sendAnswerPickup(); //send answer if pickup was successfull
+      
     break;
     case DROP_LEFT:
-      //go to position right
-      //myservo.write(POSITION_IDLE);              // tell servo to go to position in variable 'POSITION_RIGHT'
-      Serial.print("going to Position IDLE");
+      
+      Serial.print("going to Position LEFT");
+      drive(POSITION_LEFT);
+      Serial.println(currentPosition);
+      delay(50); // wait a moment
       drive(POSITION_IDLE);
-      Serial.println(POSITION_IDLE);
-      delay(50);  
+      delay(50); // wait a moment
+      sendAnswerDrop(); //send answer if drop was successfull
+      
+       
     break;
     case DROP_RIGHT:
-    
+      Serial.print("going to Position RIGHT");
+      drive(POSITION_RIGHT);
+      Serial.println(currentPosition);
+      delay(50); // wait a moment
+      drive(POSITION_IDLE);
+      delay(50); // wait a moment
+      sendAnswerDrop(); //send answer if drop was successfull
+    break;
+
+    //testpositions
+     case CHECK_POSITION_LEFT:
+      Serial.print("going to Position LEFT");
+      drive(POSITION_LEFT);
+    break;
+     case CHECK_POSITION_RIGHT:
+      Serial.print("going to Position RIGHT");
+      drive(POSITION_RIGHT);
+    break;
+     case CHECK_POSITION_IDLE:
+      Serial.print("going to Position IDLE");
+      drive(POSITION_IDLE);
     break;
   }
-  Serial.print(" 0000000000000000000000000 sensor is");
-    short sensorInput = 0;
-    sensorInput = digitalRead(SENSORPIN);
-    Serial.println((int)sensorInput);  
+   
 }
 
 /**************************************************************************/
