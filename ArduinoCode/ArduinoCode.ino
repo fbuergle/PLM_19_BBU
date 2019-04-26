@@ -129,7 +129,8 @@ void error(const __FlashStringHelper*err) {
 /**************************************************************************/
 void setup(void)
 {
-  while (!Serial);  // required for Flora & Micro
+  //comment out the following line, so it doesn't wait till serial monitor is initialized (will not happen if arduino is powered by battery)
+  //while (!Serial);  // required for Flora & Micro
   delay(500);
 
   Serial.begin(115200);
@@ -320,6 +321,7 @@ void work(void){
   switch(currentState){
     case IDLESTATE:
       // do nothing, wait for input
+      
     break;
     case PICKUP_LEFT:
        
@@ -373,13 +375,16 @@ void work(void){
      case CHECK_POSITION_LEFT:
       Serial.print("going to Position LEFT");
       drive(POSITION_LEFT);
+      sendAnswer("testleft");
     break;
      case CHECK_POSITION_RIGHT:
       Serial.print("going to Position RIGHT");
+      sendAnswer("TestRight");
       drive(POSITION_RIGHT);
     break;
      case CHECK_POSITION_IDLE:
       Serial.print("going to Position IDLE");
+      sendAnswer("HeyIdle");
       drive(POSITION_IDLE);
     break;
   }
@@ -394,6 +399,7 @@ void work(void){
 void loop(void)
 {
   // Check for user input
+  
   char inputs[BUFSIZE+1];
 
   if ( getUserInput(inputs, BUFSIZE) )
