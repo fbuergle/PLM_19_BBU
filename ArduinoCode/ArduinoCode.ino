@@ -33,6 +33,8 @@
   #include <SoftwareSerial.h>
 #endif
 
+#include "string.h"
+
 //-- Servo stuff -- 05.04.19
 #include <Servo.h>
 Servo myservo;  // create servo object to control a servo
@@ -129,61 +131,15 @@ void error(const __FlashStringHelper*err) {
 /**************************************************************************/
 void setup(void)
 {
-  //comment out the following line, so it doesn't wait till serial monitor is initialized (will not happen if arduino is powered by battery)
-  //while (!Serial);  // required for Flora & Micro
+  
+  //Communication without bluetooth (via Serial monitor)
+  while (!Serial);
   delay(500);
 
   Serial.begin(115200);
-  Serial.println(F("Adafruit Bluefruit Command Mode Example"));
-  Serial.println(F("---------------------------------------"));
-
-  /* Initialise the module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
-
-  if ( !ble.begin(VERBOSE_MODE) )
-  {
-    error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
-  }
-  Serial.println( F("OK!") );
-
-  if ( FACTORYRESET_ENABLE )
-  {
-    /* Perform a factory reset to make sure everything is in a known state */
-    Serial.println(F("Performing a factory reset: "));
-    if ( ! ble.factoryReset() ){
-      error(F("Couldn't factory reset"));
-    }
-  }
-
-  /* Disable command echo from Bluefruit */
-  ble.echo(false);
-
-  Serial.println("Requesting Bluefruit info:");
-  /* Print Bluefruit information */
-  ble.info();
-
-  Serial.println(F("Please use Adafruit Bluefruit LE app to connect in UART mode"));
-  Serial.println(F("Then Enter characters to send to Bluefruit"));
-  Serial.println();
-
-  ble.verbose(false);  // debug info is a little annoying after this point!
-
-  /* Wait for connection */
-  while (! ble.isConnected()) {
-      delay(500);
-  }
-
-  // LED Activity command is only supported from 0.6.6
-  if ( ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) )
-  {
-    // Change Mode LED Activity
-    Serial.println(F("******************************"));
-    Serial.println(F("Change LED activity to " MODE_LED_BEHAVIOUR));
-    ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
-    Serial.println(F("******************************"));
-  }
-
-
+  //Serial.println("ready or not, here I come");
+  
+  //------------ End of Communication setup ----------------
   /*---------------- Setup Servo ----------------- */
   // initialize digital pin 13 as an output.
   pinMode(SERVOPIN, OUTPUT);
@@ -198,26 +154,18 @@ void setup(void)
 }
 
 /*SECOND TRY*/
-//Communicate via bluetooth
+//Communicate via Serial
 void sendAnswer(char text[]){
-// Send characters to Bluefruit
-    Serial.print("[Send] ");
+    //Comunication without bluetooth
     Serial.println(text);
-
-    ble.print("AT+BLEUARTTX=");
-    ble.println(text);
-    // check response stastus
-    if (! ble.waitForOK() ) {
-      Serial.println(F("Failed to send?"));
-    }
 }
 
 //check sensor, returns true if package detected
 bool packageDetected(){
-  Serial.print(" checksensor -- sensor is");
+  //Serial.print(" checksensor -- sensor is");
   int sensorInput = 0;
   sensorInput = digitalRead(SENSORPIN);
-  Serial.println(sensorInput);
+  //Serial.println(sensorInput);
   
   bool returnvalue = false;
   
@@ -226,8 +174,7 @@ bool packageDetected(){
   if(sensorInput == LOW){
     returnvalue = true;
   }
-      Serial.print(" pacakgeDetected is ");
-      Serial.println(returnvalue);
+     
   return returnvalue;
 }
 
@@ -264,34 +211,35 @@ enum myStateMachine{
 };
 int currentState = IDLESTATE;
 
-//Change state according to the input (from bluetooth)
-void checkforInput(String input){
-  if (input == "pickup(0)"){
+//Change state according to the input (from Serial)
+void checkforInput(char input[]){ 
+  
+  if ((strcmp(input,"pickup(0)\n") == 0) || strcmp(input,"pickup(0)") == 0){
       currentState = PICKUP_LEFT;
   }
-  if(input == "pickup(1)"){
+  if (strcmp(input,"pickup(1)\n") == 0 || strcmp(input,"pickup(1)") == 0){
       currentState = PICKUP_RIGHT;
   }
-  if(input == "drop(0)"){
+  if (strcmp(input,"drop(0)\n") == 0 || strcmp(input,"drop(0)") == 0){
       currentState = DROP_LEFT;
   }
-  if(input == "drop(1)"){
+  if (strcmp(input,"drop(1)\n") == 0 || strcmp(input,"drop(1)") == 0){
       currentState = DROP_RIGHT;
   }
 
   //For Testing purpuoses - comment out, once all positions are clear
-  if(input == "testleft"){
+  if (strcmp(input,"testleft\n") == 0 || strcmp(input,"testleft") == 0){
       currentState = CHECK_POSITION_LEFT;
   }
-  if(input == "testright"){
+  if (strcmp(input,"testright\n") == 0 || strcmp(input,"testright") == 0){
       currentState = CHECK_POSITION_RIGHT;
   }
-  if(input == "testidle"){
+     if (strcmp(input,"testidle\n") == 0 || strcmp(input,"testidle") == 0){
       currentState = CHECK_POSITION_IDLE;
   }
   // --End of Testing
-  Serial.println("CheckforInput was called");
-  Serial.print(currentState);
+  //Serial.println("CheckforInput was called");
+  //Serial.print(currentState);
 }
 
 //driving
@@ -300,16 +248,12 @@ void drive(int positionToDriveAt){
   if(currentPosition>positionToDriveAt){
     for(currentPosition; currentPosition > positionToDriveAt; currentPosition-=speedOfDrive){
         myservo.write(currentPosition);
-        //Serial.print("going to Position left, currently at:");
-        //Serial.println(currentPosition);
         delay(waittimePerDegree); 
       }
   }
   else{
     for(currentPosition; currentPosition < positionToDriveAt; currentPosition+=speedOfDrive){
         myservo.write(currentPosition);
-        //Serial.print("going to Position , currently at:");
-        //Serial.println(currentPosition);
         delay(waittimePerDegree); 
       }
     }
@@ -324,68 +268,64 @@ void work(void){
       
     break;
     case PICKUP_LEFT:
-       
-       Serial.print("going to Position left, currentPosition");
-      Serial.println(currentPosition);
       drive(POSITION_LEFT);
-      Serial.print("Position left reached, currentPosition");
-      Serial.println(currentPosition);
+      
       delay(50); // wait a moment
       drive(POSITION_IDLE);
       delay(50); // wait a moment
-      //packageDetected(); //check sensor (returns true, if package was in
-      sendAnswerPickup();
       
+      sendAnswerPickup();
+      currentState = IDLESTATE;
     break;
     case PICKUP_RIGHT:
-      //go to position right
-      //myservo.write(POSITION_RIGHT);              // tell servo to go to position in variable 'POSITION_RIGHT'
-      Serial.print("going to Position right");
-      Serial.println(POSITION_RIGHT);
       drive(POSITION_RIGHT);
+      
       delay(50); // wait a moment
       drive(POSITION_IDLE);
       delay(50); // wait a moment
+      
       sendAnswerPickup(); //send answer if pickup was successfull
       
+      currentState = IDLESTATE;
     break;
     case DROP_LEFT:
-      
-      Serial.print("going to Position LEFT");
       drive(POSITION_LEFT);
-      Serial.println(currentPosition);
+
       delay(50); // wait a moment
       drive(POSITION_IDLE);
       delay(50); // wait a moment
+
       sendAnswerDrop(); //send answer if drop was successfull
-      
        
+      currentState = IDLESTATE;
     break;
     case DROP_RIGHT:
-      Serial.print("going to Position RIGHT");
       drive(POSITION_RIGHT);
-      Serial.println(currentPosition);
+      
       delay(50); // wait a moment
       drive(POSITION_IDLE);
       delay(50); // wait a moment
+      
       sendAnswerDrop(); //send answer if drop was successfull
+      
+      currentState = IDLESTATE;
     break;
 
     //testpositions
      case CHECK_POSITION_LEFT:
-      Serial.print("going to Position LEFT");
       drive(POSITION_LEFT);
-      sendAnswer("testleft");
+      
+      currentState = IDLESTATE;
     break;
      case CHECK_POSITION_RIGHT:
-      Serial.print("going to Position RIGHT");
-      sendAnswer("TestRight");
       drive(POSITION_RIGHT);
+      
+      currentState = IDLESTATE;
     break;
      case CHECK_POSITION_IDLE:
-      Serial.print("going to Position IDLE");
-      sendAnswer("HeyIdle");
       drive(POSITION_IDLE);
+      
+      currentState = IDLESTATE;
     break;
   }
    
@@ -399,44 +339,18 @@ void work(void){
 void loop(void)
 {
   // Check for user input
-  
   char inputs[BUFSIZE+1];
 
+  //check if user used one of the known commands like pickup or drop
   if ( getUserInput(inputs, BUFSIZE) )
   {
-    // Send characters to Bluefruit
-    Serial.print("[Send] ");
-    Serial.println(inputs);
-
-    ble.print("AT+BLEUARTTX=");
-    ble.println(inputs);
-
-    // check response stastus
-    if (! ble.waitForOK() ) {
-      Serial.println(F("Failed to send?"));
-    }
+    //Serial.println("CheckForInputs by inputs: ");
+    //Serial.println(inputs);
+    checkforInput(inputs);
   }
-
-  // Check for incoming characters from Bluefruit
-  ble.println("AT+BLEUARTRX");
-  ble.readline();
-  if (strcmp(ble.buffer, "OK") == 0) {
-    // no data
-    return;
-  }
-
-  //check if user used one of the known commands like pickup or drop
-  checkforInput(ble.buffer);
-  Serial.println("currentState");
-  Serial.println(currentState);
-
   //do what has to be done in the current state
   work();
-  
-  // Some data was found, its in the buffer
-  Serial.print(F("[Recv] ")); Serial.println(ble.buffer);
-  ble.waitForOK();
-
+ 
 }
 
 /**************************************************************************/
